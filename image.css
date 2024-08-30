@@ -1,0 +1,14 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 50%; /* Ensure the body takes full height */
+}
+
+.image-container {
+    background-image: url('diet1.PNG'); /* Change this path accordingly */
+    background-size: cover; /* This will cover the entire viewport */
+    background-position: center; /* Center the image */
+    width: 50%;
+    height: 50vh; /* Full viewport height */
+    background-repeat: no-repeat; /* Prevent the image from repeating */
+}
