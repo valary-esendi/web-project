@@ -55,6 +55,7 @@ function logout() {
 }
 
 // Meals
+
 document.getElementById('meal-form')?.addEventListener('submit', addMeal);
 let authToken = localStorage.getItem('token');
 
@@ -68,7 +69,7 @@ function loadMeals() {
         mealList.innerHTML = '';
         data.forEach(meal => {
             const li = document.createElement('li');
-            li.textContent = `${meal.meal} - Type: ${meal.meal_type}, Times: ${meal.meal_type_times}, Date: ${new Date(meal.date).toLocaleDateString()}`;
+            li.textContent = `${meal.meal} - Type: ${meal.meal_type}, Times: ${meal.meal_type_times}, Date: ${new Date(meal.date).toLocaleDateString()}, Expiration: ${new Date(meal.food_expiration).toLocaleDateString()}`;
 
             // Highlight problematic meals
             if (meal.meal_type.toLowerCase() === 'fat' || meal.meal_type.toLowerCase() === 'protein') {
@@ -81,17 +82,24 @@ function loadMeals() {
                 }
             }
 
+            // Check for expiration and alert
+            const daysLeft = Math.ceil((new Date(meal.food_expiration) - new Date()) / (1000 * 60 * 60 * 24));
+            if (daysLeft <= 3) {
+                li.style.color = 'orange'; // Highlight near expiration
+                const reminder = document.createElement('div');
+                reminder.textContent = `Use this meal soon to avoid waste!`;
+                reminder.style.color = 'red';
+                li.appendChild(reminder);
+            }
+
             mealList.appendChild(li);
         });
 
         // Sustainability tips
-        const sustainabilityTips = document.getElementById('sustainability-tips');
-        sustainabilityTips.innerHTML = '';
-        sustainabilityTips.innerHTML += "<h3>Sustainability Tips:</h3>";
-        sustainabilityTips.innerHTML += "<p>Consider incorporating more plant-based meals into your diet for a reduced environmental impact.</p>";
-        sustainabilityTips.innerHTML += "<p>Buy local and seasonal produce to support local farmers and reduce carbon footprints.</p>";
+        displaySustainabilityTips();
     });
 }
+// add meal
 
 function addMeal(event) {
     event.preventDefault();
@@ -99,6 +107,8 @@ function addMeal(event) {
     const mealName = document.getElementById('meal_name').value;
     const mealType = document.getElementById('meal_type').value;
     const mealTypeTimes = document.getElementById('meal_type_times').value;
+    const date = document.getElementById('date').value;
+    const foodExpiration = document.getElementById('food_expiration').value;
 
     fetch('http://localhost:4000/api/auth/meals', {
         method: 'POST',
@@ -106,7 +116,13 @@ function addMeal(event) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`
         },
-        body: JSON.stringify({ meal: mealName, meal_type: mealType, meal_type_times: parseInt(mealTypeTimes) })
+        body: JSON.stringify({
+            meal: mealName,
+            meal_type: mealType,
+            meal_type_times: parseInt(mealTypeTimes),
+            date: date,
+            food_expiration: foodExpiration // Send expiration date
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -114,79 +130,22 @@ function addMeal(event) {
         document.getElementById('meal_name').value = '';
         document.getElementById('meal_type').value = '';
         document.getElementById('meal_type_times').value = '';
-        // Redirect to food page after adding meals
-        window.location.href = 'food.html';  // Redirect to food page
+        document.getElementById('date').value= '';
+        document.getElementById('food_expiration').value = ''; // Clear expiration input
+        alert('Meal added successfully!');
     });
 }
 
-// Food form submission logic
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('food-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const foodName = document.getElementById('food_name').value;
-        const foodExpiration = document.getElementById('food_expiration').value;
-
-        // Fetch API to add food
-        const response = await fetch('http://localhost:4000/api/auth/foods', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ name: foodName, expiration: foodExpiration })
-        });
-
-        const data = await response.json();
-        // Redirect to meals page after successfully adding food
-        if (response.ok) {
-            alert('Food added successfully!');
-            window.location.href = 'meals.html';  // Redirect to meals page
-        } else {
-            alert(data.message);
-        }
-    });
-});
-
-// Added functionality to reduce food waste
-function checkExpiration() {
-    fetch('http://localhost:4000/api/auth/foods', {
-        headers: {
-            'Authorization': `Bearer ${authToken}`
-        }
-    })
-    .then(response => {
-        console.log(response); // Logging response
-        return response.json();
-    })
-    .then(data => {
-        console.log(data); // Log the fetched foods to see their details
-        const foodList = document.getElementById('food-list');
-        foodList.innerHTML = '';
-
-        if (Array.isArray(data)) {
-            data.forEach(food => {
-                const li = document.createElement('li');
-                li.textContent = `${food.name} - Expiration Date: ${new Date(food.expiration).toLocaleDateString()}`;
-                const daysLeft = Math.ceil((new Date(food.expiration) - new Date()) / (1000 * 60 * 60 * 24));
-
-                if (daysLeft <= 3) {
-                    li.style.color = 'red';
-                    const reminder = document.createElement('div');
-                    reminder.textContent = `Use this food soon to avoid waste!`;
-                    reminder.style.color = 'green';
-                    li.appendChild(reminder);
-                }
-
-                foodList.appendChild(li);
-            });
-        } else {
-            console.error('Response data is not an array.');
-        }
-    })
-    .catch(err => console.error('Error fetching foods:', err));
+// Sustainability tips display function
+function displaySustainabilityTips() {
+    const sustainabilityTips = document.getElementById('sustainability-tips');
+    sustainabilityTips.innerHTML = '';
+    sustainabilityTips.innerHTML += "<h3>Sustainability Tips:</h3>";
+    sustainabilityTips.innerHTML += "<p>Consider incorporating more plant-based meals into your diet for a reduced environmental impact.</p>";
+    sustainabilityTips.innerHTML += "<p>Buy local and seasonal produce to support local farmers and reduce carbon footprints.</p>";
 }
-// Call checkExpiration on page load to alert users of impending expiration dates
+
+// Call loadMeals on page load to alert users of impending expiration dates
 window.onload = () => {
     loadMeals();
-    checkExpiration(); // Check for food nearing expiration
 };

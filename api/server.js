@@ -82,7 +82,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
 });
 
-// Get meals (require authentication)
+// Get meals (requires authentication)
 app.get('/api/auth/meals', authenticateToken, (req, res) => {
     db.query('SELECT * FROM meals WHERE userId = ?', [req.user.id], (err, results) => {
         if (err) {
@@ -92,14 +92,15 @@ app.get('/api/auth/meals', authenticateToken, (req, res) => {
     });
 });
 
-// Add a meal (require authentication)
+// Add a meal (requires authentication)
 app.post('/api/auth/meals', authenticateToken, (req, res) => {
     const newMeal = {
         meal: req.body.meal,
         meal_type: req.body.meal_type,
         meal_type_times: req.body.meal_type_times,
         userId: req.user.id,
-        date: new Date()  // Store the current time
+        date: new Date(),  // Store the current time
+        food_expiration: req.body.expiration // Include expiration date
     };
 
     const isFatOrProtein = /(fat|protein)/i.test(newMeal.meal);
@@ -118,8 +119,8 @@ app.post('/api/auth/meals', authenticateToken, (req, res) => {
             }
 
             // Otherwise, insert the meal
-            db.query('INSERT INTO meals (meal, meal_type, meal_type_times, userId, date) VALUES (?, ?, ?, ?, ?)', 
-                [newMeal.meal, newMeal.meal_type, newMeal.meal_type_times, newMeal.userId, newMeal.date], (err, results) => {
+            db.query('INSERT INTO meals (meal, meal_type, meal_type_times, userId, date, food_expiration) VALUES (?, ?, ?, ?, ?, ?)', 
+                [newMeal.meal, newMeal.meal_type, newMeal.meal_type_times, newMeal.userId, newMeal.date, newMeal.food_expiration], (err, results) => {
                     if (err) {
                         return res.status(500).send('Error adding meal.');
                     }
@@ -127,33 +128,6 @@ app.post('/api/auth/meals', authenticateToken, (req, res) => {
             });
         }
     );
-});
-
-// Get foods (require authentication)
-app.get('/api/auth/foods', authenticateToken, (req, res) => {
-    db.query('SELECT * FROM foods WHERE userId = ?', [req.user.id], (err, results) => {
-        if (err) {
-            return res.status(500).send('Error retrieving foods.');
-        }
-        res.json(results);
-    });
-});
-
-// Add food (require authentication)
-app.post('/api/auth/foods', authenticateToken, (req, res) => {
-    const newFood = {
-        name: req.body.name,
-        expiration: req.body.expiration,
-        userId: req.user.id
-    };
-
-    db.query('INSERT INTO foods (name, expiration, userId) VALUES (?, ?, ?)', 
-        [newFood.name, newFood.expiration, newFood.userId], (err, results) => {
-            if (err) {
-                return res.status(500).send('Error adding food.');
-            }
-            res.status(201).json({ id: results.insertId, ...newFood });
-    });
 });
 
 // Start the server
