@@ -100,11 +100,11 @@ app.post('/api/auth/meals', authenticateToken, (req, res) => {
         meal_type_times: req.body.meal_type_times,
         userId: req.user.id,
         date: new Date(),  // Store the current time
-        food_expiration: req.body.expiration // Include expiration date
+        food_expiration: req.body.food_expiration // Use correct body parameter
     };
 
-    const isFatOrProtein = /(fat|protein)/i.test(newMeal.meal);
-    const checkLimitInterval = 60 * 60 * 1000 * 24; // 24 hours in milliseconds
+    const isFatOrProtein = /(fat|protein)/i.test(newMeal.meal_type);
+    const checkLimitInterval = 1000 * 60 * 60 * 24;  // 24 hours in milliseconds
 
     // Query to count meals taken in the last 24 hours
     db.query('SELECT COUNT(*) as mealCount FROM meals WHERE userId = ? AND date >= ?', 

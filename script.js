@@ -54,57 +54,41 @@ function logout() {
     window.location.href = 'login.html';  // Redirect to login
 }
 
-// Meals
-
+// Meals functionality
 document.getElementById('meal-form')?.addEventListener('submit', addMeal);
 let authToken = localStorage.getItem('token');
 
+// Load meals from the API
 function loadMeals() {
     fetch('http://localhost:4000/api/auth/meals', {
         headers: { 'Authorization': `Bearer ${authToken}` }
     })
-    .then(response => response.json())
-    .then(data => {
-        const mealList = document.getElementById('meal-list');
-        mealList.innerHTML = '';
-        data.forEach(meal => {
-            const li = document.createElement('li');
-            li.textContent = `${meal.meal} - Type: ${meal.meal_type}, Times: ${meal.meal_type_times}, Date: ${new Date(meal.date).toLocaleDateString()}, Expiration: ${new Date(meal.food_expiration).toLocaleDateString()}`;
-
-            // Highlight problematic meals
-            if (meal.meal_type.toLowerCase() === 'fat' || meal.meal_type.toLowerCase() === 'protein') {
-                li.style.color = 'red'; // Highlight
-                if (meal.meal_type_times > 1) {
-                    const recommendation = document.createElement('div');
-                    recommendation.textContent = `Consider reducing ${meal.meal_type} intake.`;
-                    recommendation.style.color = 'green';
-                    li.appendChild(recommendation);
-                }
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
             }
-
-            // Check for expiration and alert
-            const daysLeft = Math.ceil((new Date(meal.food_expiration) - new Date()) / (1000 * 60 * 60 * 24));
-            if (daysLeft <= 3) {
-                li.style.color = 'orange'; // Highlight near expiration
-                const reminder = document.createElement('div');
-                reminder.textContent = `Use this meal soon to avoid waste!`;
-                reminder.style.color = 'red';
-                li.appendChild(reminder);
-            }
-
-            mealList.appendChild(li);
+            return response.json();
+        })
+        .then(data => {
+            const mealList = document.getElementById('meal-list');
+            mealList.innerHTML = '';  // Clear existing list
+            data.forEach(meal => {
+                const li = document.createElement('li');
+                li.textContent = `${meal.meal} - Type: ${meal.meal_type}, Times: ${meal.meal_type_times}, Date: ${new Date(meal.date).toLocaleDateString()}, Expiration: ${new Date(meal.food_expiration).toLocaleDateString()}`;
+                mealList.appendChild(li);
+            });
+            displaySustainabilityTips();  // Call to display tips
+        })
+        .catch(error => {
+            console.error('Error loading meals:', error);
         });
-
-        // Sustainability tips
-        displaySustainabilityTips();
-    });
 }
-// add meal
 
+// Add a new meal
 function addMeal(event) {
     event.preventDefault();
 
-    const mealName = document.getElementById('meal_name').value;
+    const meal = document.getElementById('meal').value;
     const mealType = document.getElementById('meal_type').value;
     const mealTypeTimes = document.getElementById('meal_type_times').value;
     const date = document.getElementById('date').value;
@@ -117,26 +101,33 @@ function addMeal(event) {
             'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify({
-            meal: mealName,
+            meal: meal,
             meal_type: mealType,
             meal_type_times: parseInt(mealTypeTimes),
             date: date,
-            food_expiration: foodExpiration // Send expiration date
+            food_expiration: foodExpiration // Include expiration date
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        // Check if the response is ok (status in the range 200-299)
+        if (!response.ok) {
+            return response.text().then(text => {
+                throw new Error(text); // Throw an error with the response text
+            });
+        }
+        return response.json(); // If response is ok, parse as JSON
+    })
     .then(data => {
-        loadMeals();
-        document.getElementById('meal_name').value = '';
-        document.getElementById('meal_type').value = '';
-        document.getElementById('meal_type_times').value = '';
-        document.getElementById('date').value= '';
-        document.getElementById('food_expiration').value = ''; // Clear expiration input
+        loadMeals();  // Reload meals after adding a new one
+        document.getElementById('meal-form').reset(); // Reset the form inputs
         alert('Meal added successfully!');
+    })
+    .catch(error => {
+        console.error('Error adding meal:', error);
+        alert('Error adding meal: ' + error.message); // Show error message
     });
 }
-
-// Sustainability tips display function
+// Display sustainability tips
 function displaySustainabilityTips() {
     const sustainabilityTips = document.getElementById('sustainability-tips');
     sustainabilityTips.innerHTML = '';

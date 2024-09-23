@@ -1,26 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meals</title>
+    <title>Your Meals</title>
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <h1>Your Meals</h1>
     <form id="meal-form">
-        <input type="text" id="meal_name" placeholder="Meal Name" required>
-        <input type="text" id="meal_type" placeholder="Meal Type (e.g., fats, proteins)" required>
-        <input type="number" id="meal_type_times" placeholder="Times Consumed" required>
-        <input type="date" id="date" placeholder="Date" value="${new Date().toISOString().split("T")[0]}" required>
-        <input type="date" id="food_expiration" placeholder="Expiration Date" required>
+        <label for="meal">Meal Name:</label>
+        <input type="text" id="meal" placeholder="Enter Meal Name" required>
+
+        <label for="meal_type">Meal Type (e.g., fats, proteins):</label>
+        <input type="text" id="meal_type" placeholder="Enter Meal Type" required>
+
+        <label for="meal_type_times">Times Consumed:</label>
+        <input type="number" id="meal_type_times" placeholder="Enter Times Consumed" required>
+
+        <label for="date">Date:</label>
+        <input type="date" id="date" required>
+
+        <label for="food_expiration">Expiration Date:</label>
+        <input type="date" id="food_expiration" required>
+
         <button type="submit">Add Meal</button>
     </form>
-   
-    <div id="sustainability-tips"></div>
+
+    <div id="sustainability-tips">
+        <h2>Sustainability Tips:</h2>
+        
+    </div>
+
     <ul id="meal-list"></ul>
-    <p><a href="login.html">Logout</a></p>
+    <p><a href="login.html" onclick="logout(); return false;">Logout</a></p>
 
     <script src="script.js"></script>
+    <script>
+        // Set current date for the meal date input
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split("T")[0];
+            document.getElementById("date").value = today;
+            loadMeals();  // Function to load previously entered meals
+        });
+    </script>
 </body>
+
 </html>
