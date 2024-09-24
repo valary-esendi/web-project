@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
-        const response = await fetch('http://localhost:4000/api/auth/register', {
+        const response = await fetch('http://localhost:3000/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ full_name: fullname, email, username, password }),
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
-        const response = await fetch('http://localhost:4000/api/auth/login', {
+        const response = await fetch('http://localhost:3000/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
@@ -53,87 +53,100 @@ function logout() {
     localStorage.removeItem('userId');
     window.location.href = 'login.html';  // Redirect to login
 }
-
-// Meals functionality
-document.getElementById('meal-form')?.addEventListener('submit', addMeal);
-let authToken = localStorage.getItem('token');
-
-// Load meals from the API
-function loadMeals() {
-    fetch('http://localhost:4000/api/auth/meals', {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(data => {
-            const mealList = document.getElementById('meal-list');
-            mealList.innerHTML = '';  // Clear existing list
-            data.forEach(meal => {
-                const li = document.createElement('li');
-                li.textContent = `${meal.meal} - Type: ${meal.meal_type}, Times: ${meal.meal_type_times}, Date: ${new Date(meal.date).toLocaleDateString()}, Expiration: ${new Date(meal.food_expiration).toLocaleDateString()}`;
-                mealList.appendChild(li);
-            });
-            displaySustainabilityTips();  // Call to display tips
-        })
-        .catch(error => {
-            console.error('Error loading meals:', error);
-        });
-}
-
-// Add a new meal
-function addMeal(event) {
-    event.preventDefault();
-
-    const meal = document.getElementById('meal').value;
-    const mealType = document.getElementById('meal_type').value;
-    const mealTypeTimes = document.getElementById('meal_type_times').value;
-    const date = document.getElementById('date').value;
-    const foodExpiration = document.getElementById('food_expiration').value;
-
-    fetch('http://localhost:4000/api/auth/meals', {
-        method: 'POST',
+// Set current date for the meal date input and load meals
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("date").value = today;
+    loadMeals();  // Load previously entered meals
+ });
+ 
+ // Meals functionality
+ document.getElementById('meal-form')?.addEventListener('submit', addMeal);
+ 
+ async function addMeal(event) {
+     event.preventDefault();
+ 
+     const authToken = localStorage.getItem('token'); // Ensure you fetch the token from local storage
+     const meal = document.getElementById('meal').value;
+     const mealType = document.getElementById('meal_type').value;
+     const mealTypeTimes = document.getElementById('meal_type_times').value;
+     const date = document.getElementById('date').value;
+     const foodExpiration = document.getElementById('food_expiration').value;
+ 
+     try {
+         const response = await fetch('http://localhost:3000/api/auth/meals', {
+             method: 'POST',
+             headers: {
+                 'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${authToken}`
+             },
+             body: JSON.stringify({
+                 meal: meal,
+                 meal_type: mealType,
+                 meal_type_times: parseInt(mealTypeTimes, 10),
+                 date: date,
+                 food_expiration: foodExpiration
+             })
+         });
+ 
+         const data = await response.json();
+         alert(data.message); // Show the message returned from the server
+ 
+         if (response.ok) {
+             loadMeals(); // Reload meals after adding a new one
+             document.getElementById('meal-form').reset(); // Reset the form inputs
+         }
+     } catch (error) {
+         console.error('Error adding meal:', error);
+         alert('Error adding meal: ' + error.message); // Show error message
+     }
+ }
+ // Function to load meals
+async function loadMeals() {
+    const authToken = localStorage.getItem('token');
+    const response = await fetch('http://localhost:3000/api/auth/meals', {
         headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({
-            meal: meal,
-            meal_type: mealType,
-            meal_type_times: parseInt(mealTypeTimes),
-            date: date,
-            food_expiration: foodExpiration // Include expiration date
-        })
-    })
-    .then(response => {
-        // Check if the response is ok (status in the range 200-299)
-        if (!response.ok) {
-            return response.text().then(text => {
-                throw new Error(text); // Throw an error with the response text
-            });
         }
-        return response.json(); // If response is ok, parse as JSON
-    })
-    .then(data => {
-        loadMeals();  // Reload meals after adding a new one
-        document.getElementById('meal-form').reset(); // Reset the form inputs
-        alert('Meal added successfully!');
-    })
-    .catch(error => {
-        console.error('Error adding meal:', error);
-        alert('Error adding meal: ' + error.message); // Show error message
+    });
+
+    const meals = await response.json();
+    const mealList = document.getElementById('meal-list').getElementsByTagName('tbody')[0];
+    mealList.innerHTML = ''; // Clear existing meals
+
+    meals.forEach(meal => {
+        const row = mealList.insertRow(); // Create a new row
+        row.innerHTML = `
+            <td>${meal.meal}</td>
+            <td>${meal.meal_type}</td>
+            <td>${meal.meal_type_times}</td>
+            <td>${meal.date}</td>
+            <td>${meal.food_expiration}</td>
+            <td><button onclick="deleteMeal(${meal.id})">Delete</button></td>
+        `;
     });
 }
-// Display sustainability tips
-function displaySustainabilityTips() {
-    const sustainabilityTips = document.getElementById('sustainability-tips');
-    sustainabilityTips.innerHTML = '';
-    sustainabilityTips.innerHTML += "<h3>Sustainability Tips:</h3>";
-    sustainabilityTips.innerHTML += "<p>Consider incorporating more plant-based meals into your diet for a reduced environmental impact.</p>";
-    sustainabilityTips.innerHTML += "<p>Buy local and seasonal produce to support local farmers and reduce carbon footprints.</p>";
+
+// Function to delete a meal
+async function deleteMeal(id) {
+    console.log(`Deleting meal with ID: ${id}`);
+    const authToken = localStorage.getItem('token');
+    try {
+        const response = await fetch(`http://localhost:3000/api/auth/meals/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` },
+        });
+
+        const data = await response.json();
+        alert(data.message);
+        
+        if (response.ok) {
+            loadMeals(); // Refresh meals list after deletion
+        }
+    } catch (error) {
+        console.error('Error deleting meal:', error);
+        alert('Error deleting meal: ' + error.message);
+    }
 }
 
 // Call loadMeals on page load to alert users of impending expiration dates

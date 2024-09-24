@@ -12,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3000;
 
 // MySQL connection setup
 const db = mysql.createConnection({
@@ -99,35 +99,48 @@ app.post('/api/auth/meals', authenticateToken, (req, res) => {
         meal_type: req.body.meal_type,
         meal_type_times: req.body.meal_type_times,
         userId: req.user.id,
-        date: new Date(),  // Store the current time
+        date: new Date(), // Store the current time
         food_expiration: req.body.food_expiration // Use correct body parameter
     };
 
-    const isFatOrProtein = /(fat|protein)/i.test(newMeal.meal_type);
-    const checkLimitInterval = 1000 * 60 * 60 * 24;  // 24 hours in milliseconds
+    // Check limit interval for the last 24 hours
+    const checkLimitInterval = 1000 * 60 * 60 * 24; // 24 hours in milliseconds
 
     // Query to count meals taken in the last 24 hours
-    db.query('SELECT COUNT(*) as mealCount FROM meals WHERE userId = ? AND date >= ?', 
+    db.query('SELECT COUNT(*) AS mealCount FROM meals WHERE userId = ? AND date >= ?', 
         [req.user.id, new Date(Date.now() - checkLimitInterval)], (err, results) => {
             if (err) {
                 return res.status(500).send('Error checking meal intake.');
             }
 
             const mealCount = results[0].mealCount;
-            if (isFatOrProtein && mealCount >= 3) {
-                return res.status(200).json({ message: `You have consumed ${newMeal.meal} multiple times. Please consider reducing your intake of ${newMeal.meal}.` });
-            }
 
-            // Otherwise, insert the meal
+            // Insert the meal directly
             db.query('INSERT INTO meals (meal, meal_type, meal_type_times, userId, date, food_expiration) VALUES (?, ?, ?, ?, ?, ?)', 
                 [newMeal.meal, newMeal.meal_type, newMeal.meal_type_times, newMeal.userId, newMeal.date, newMeal.food_expiration], (err, results) => {
                     if (err) {
                         return res.status(500).send('Error adding meal.');
                     }
                     res.status(201).json({ id: results.insertId, ...newMeal });
-            });
+                });
         }
     );
+});
+// Delete a meal (requires authentication)
+app.delete('/api/auth/meals/:id', authenticateToken, (req, res) => {
+    const mealId = req.params.id;
+
+    db.query('DELETE FROM meals WHERE id = ? AND userId = ?', [mealId, req.user.id], (err, results) => {
+        if (err) {
+            return res.status(500).send('Error deleting meal.');
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: 'Meal not found or does not belong to the user.' });
+        }
+
+        res.json({ message: 'Meal deleted successfully.' });
+    });
 });
 
 // Start the server
